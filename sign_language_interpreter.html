@@ -1,0 +1,833 @@
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #111118;
+    --panel: #16161e;
+    --border: rgba(255,255,255,0.07);
+    --accent: #7c6ef7;
+    --accent2: #4ecdc4;
+    --warn: #f7a44e;
+    --danger: #f76e6e;
+    --text: #e8e8f0;
+    --muted: #888899;
+    --glow: rgba(124,110,247,0.35);
+  }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  .app {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem 4rem;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 2.5rem;
+  }
+  .header-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(124,110,247,0.12);
+    border: 0.5px solid rgba(124,110,247,0.3);
+    border-radius: 100px;
+    padding: 5px 14px;
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .pulse-dot {
+    width: 6px; height: 6px;
+    background: var(--accent2);
+    border-radius: 50%;
+    animation: pulse-dot 1.4s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+  .header h1 {
+    font-size: clamp(2rem, 5vw, 3.2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    background: linear-gradient(135deg, #e8e8f0 30%, #7c6ef7 70%, #4ecdc4);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .header p {
+    margin-top: 0.75rem;
+    color: var(--muted);
+    font-size: 0.95rem;
+    font-weight: 400;
+  }
+
+  /* Main layout */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  @media(max-width: 600px) {
+    .main-grid { grid-template-columns: 1fr; }
+  }
+
+  /* Camera panel */
+  .camera-panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+    position: relative;
+  }
+  .camera-feed {
+    width: 100%;
+    aspect-ratio: 4/3;
+    background: #0c0c14;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Animated hand SVG */
+  .hand-container {
+    position: relative;
+    width: 160px;
+    height: 200px;
+  }
+  .hand-svg {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+  }
+
+  /* Scanline overlay */
+  .scanline {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(78,205,196,0.6), transparent);
+    animation: scan 2.5s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes scan {
+    from { top: 0; }
+    to { top: 100%; }
+  }
+
+  /* Corner brackets */
+  .bracket {
+    position: absolute;
+    width: 20px; height: 20px;
+    pointer-events: none;
+  }
+  .bracket-tl { top: 12px; left: 12px; border-top: 2px solid var(--accent2); border-left: 2px solid var(--accent2); }
+  .bracket-tr { top: 12px; right: 12px; border-top: 2px solid var(--accent2); border-right: 2px solid var(--accent2); }
+  .bracket-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--accent2); border-left: 2px solid var(--accent2); }
+  .bracket-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--accent2); border-right: 2px solid var(--accent2); }
+
+  /* Tracking dots */
+  .track-dot {
+    position: absolute;
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent2);
+    box-shadow: 0 0 6px var(--accent2);
+    animation: track-blink 1s ease-in-out infinite;
+  }
+  @keyframes track-blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* Camera info bar */
+  .camera-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-top: 0.5px solid var(--border);
+  }
+  .rec-indicator {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: var(--danger);
+  }
+  .rec-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--danger);
+    animation: pulse-dot 0.8s ease-in-out infinite;
+  }
+  .camera-stats {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Result panel */
+  .result-panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  .panel-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* Word display */
+  .word-display {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 8px;
+    min-height: 100px;
+    border-radius: 12px;
+    border: 1.5px solid var(--border);
+    padding: 1.5rem 1rem;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .word-display.clear-state {
+    border-color: rgba(78,205,196,0.4);
+    background: rgba(78,205,196,0.04);
+  }
+  .word-display.unclear-state {
+    border-color: rgba(247,110,110,0.5);
+    background: rgba(247,110,110,0.04);
+    animation: flash-border 0.6s ease-in-out 3;
+  }
+  @keyframes flash-border {
+    0%,100% { box-shadow: none; }
+    50% { box-shadow: 0 0 0 2px rgba(247,110,110,0.5), 0 0 20px rgba(247,110,110,0.2); }
+  }
+  .word-display.idle-state {
+    border-color: var(--border);
+    background: transparent;
+  }
+
+  .interpreted-word {
+    font-size: 2.2rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    animation: word-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    color: var(--accent2);
+  }
+  @keyframes word-in {
+    from { opacity: 0; transform: translateY(12px) scale(0.9); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .unclear-label {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    animation: word-in 0.4s ease;
+  }
+  .unclear-icon {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: rgba(247,110,110,0.15);
+    border: 1.5px solid rgba(247,110,110,0.4);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .unclear-text {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--danger);
+    text-align: center;
+  }
+  .unclear-sub {
+    font-size: 0.72rem;
+    color: rgba(247,110,110,0.6);
+    font-weight: 400;
+    text-align: center;
+  }
+  .idle-text {
+    color: var(--muted);
+    font-size: 0.85rem;
+    text-align: center;
+  }
+
+  /* Confidence meter */
+  .confidence-section { }
+  .conf-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+  }
+  .conf-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 1.1rem;
+    font-weight: 700;
+    transition: color 0.4s;
+  }
+  .conf-bar-track {
+    height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 100px;
+    overflow: hidden;
+    position: relative;
+  }
+  .conf-bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s;
+  }
+  /* Threshold line */
+  .threshold-marker {
+    position: absolute;
+    top: -2px; bottom: -2px;
+    width: 2px;
+    background: rgba(255,255,255,0.25);
+    left: 75%;
+    border-radius: 2px;
+  }
+  .threshold-marker::after {
+    content: '75%';
+    position: absolute;
+    top: -16px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: rgba(255,255,255,0.3);
+    white-space: nowrap;
+  }
+
+  /* Controls */
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .ctrl-btn {
+    background: var(--panel);
+    border: 0.5px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem;
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex; align-items: center; justify-content: center; gap: 7px;
+  }
+  .ctrl-btn:hover { background: rgba(124,110,247,0.12); border-color: rgba(124,110,247,0.3); color: var(--accent); }
+  .ctrl-btn.active { background: rgba(124,110,247,0.15); border-color: rgba(124,110,247,0.5); color: var(--accent); }
+  .ctrl-btn.danger-btn:hover { background: rgba(247,110,110,0.12); border-color: rgba(247,110,110,0.3); color: var(--danger); }
+
+  /* History */
+  .history-panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+  }
+  .history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+  }
+  .history-list {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 220px;
+    overflow-y: auto;
+  }
+  .history-list::-webkit-scrollbar { width: 3px; }
+  .history-list::-webkit-scrollbar-track { background: transparent; }
+  .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 12px;
+    border-radius: 8px;
+    background: var(--panel);
+    border: 0.5px solid var(--border);
+    animation: slide-in 0.3s ease;
+  }
+  @keyframes slide-in {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  .history-word {
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+  .history-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .history-conf {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+  }
+  .history-badge {
+    font-size: 9px;
+    font-family: 'Space Mono', monospace;
+    padding: 2px 7px;
+    border-radius: 100px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .badge-clear { background: rgba(78,205,196,0.12); color: var(--accent2); border: 0.5px solid rgba(78,205,196,0.3); }
+  .badge-unclear { background: rgba(247,110,110,0.12); color: var(--danger); border: 0.5px solid rgba(247,110,110,0.3); }
+
+  .empty-history {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.8rem;
+    padding: 2rem 0;
+  }
+
+  /* Sentence builder */
+  .sentence-panel {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 16px;
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+  }
+  .sentence-display {
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 10px 12px;
+    background: var(--panel);
+    border-radius: 10px;
+    border: 0.5px solid var(--border);
+    margin-top: 0.75rem;
+  }
+  .sentence-word {
+    background: rgba(124,110,247,0.12);
+    border: 0.5px solid rgba(124,110,247,0.3);
+    color: var(--accent);
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 6px;
+    animation: word-in 0.3s ease;
+  }
+  .cursor-blink {
+    width: 2px; height: 18px;
+    background: var(--accent);
+    border-radius: 1px;
+    animation: cursor-blink 1s step-end infinite;
+  }
+  @keyframes cursor-blink {
+    0%,100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+  .stat-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem;
+    text-align: center;
+  }
+  .stat-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    font-family: 'Space Mono', monospace;
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .stat-label {
+    font-size: 0.7rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+  }
+</style>
+
+<div class="app">
+  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">Sign Language Interpreter with confidence threshold filtering</h2>
+
+  <div class="header">
+    <div class="header-badge"><div class="pulse-dot"></div>AI Vision Active</div>
+    <h1>Sign Language<br>Interpreter</h1>
+    <p>Real-time gesture recognition with confidence filtering</p>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <span class="stat-value" id="stat-total" style="color:var(--accent)">0</span>
+      <span class="stat-label">Total Signs</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-clear" style="color:var(--accent2)">0</span>
+      <span class="stat-label">Recognized</span>
+    </div>
+    <div class="stat-card">
+      <span class="stat-value" id="stat-unclear" style="color:var(--danger)">0</span>
+      <span class="stat-label">Unclear</span>
+    </div>
+  </div>
+
+  <!-- Main grid: camera + result -->
+  <div class="main-grid" style="margin-bottom:1rem">
+    <!-- Camera panel -->
+    <div class="camera-panel">
+      <div class="camera-feed" id="camera-feed">
+        <div class="bracket bracket-tl"></div>
+        <div class="bracket bracket-tr"></div>
+        <div class="bracket bracket-bl"></div>
+        <div class="bracket bracket-br"></div>
+        <div class="scanline" id="scanline"></div>
+        <div class="hand-container">
+          <svg class="hand-svg" id="hand-svg" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="2" result="blur"/>
+                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
+            <!-- Palm -->
+            <ellipse cx="80" cy="140" rx="38" ry="42" fill="rgba(124,110,247,0.15)" stroke="rgba(124,110,247,0.5)" stroke-width="1.5"/>
+            <!-- Fingers (5 lines with joints) -->
+            <g id="fingers" filter="url(#glow)">
+              <!-- Thumb -->
+              <line x1="44" y1="130" x2="22" y2="104" stroke="rgba(78,205,196,0.8)" stroke-width="7" stroke-linecap="round"/>
+              <line x1="22" y1="104" x2="10" y2="82" stroke="rgba(78,205,196,0.8)" stroke-width="6" stroke-linecap="round"/>
+              <!-- Index -->
+              <line x1="58" y1="108" x2="52" y2="72" stroke="rgba(124,110,247,0.9)" stroke-width="7" stroke-linecap="round"/>
+              <line x1="52" y1="72" x2="48" y2="46" stroke="rgba(124,110,247,0.9)" stroke-width="6" stroke-linecap="round"/>
+              <!-- Middle -->
+              <line x1="74" y1="104" x2="72" y2="64" stroke="rgba(124,110,247,0.9)" stroke-width="7" stroke-linecap="round"/>
+              <line x1="72" y1="64" x2="70" y2="36" stroke="rgba(124,110,247,0.9)" stroke-width="6" stroke-linecap="round"/>
+              <!-- Ring -->
+              <line x1="90" y1="106" x2="92" y2="68" stroke="rgba(124,110,247,0.9)" stroke-width="7" stroke-linecap="round"/>
+              <line x1="92" y1="68" x2="94" y2="42" stroke="rgba(124,110,247,0.9)" stroke-width="6" stroke-linecap="round"/>
+              <!-- Pinky -->
+              <line x1="105" y1="114" x2="114" y2="82" stroke="rgba(124,110,247,0.7)" stroke-width="6" stroke-linecap="round"/>
+              <line x1="114" y1="82" x2="120" y2="62" stroke="rgba(124,110,247,0.7)" stroke-width="5" stroke-linecap="round"/>
+            </g>
+            <!-- Joint dots -->
+            <g id="joints">
+              <circle cx="22" cy="104" r="3.5" fill="rgba(78,205,196,0.9)"/>
+              <circle cx="10" cy="82" r="3" fill="rgba(78,205,196,0.9)"/>
+              <circle cx="52" cy="72" r="3.5" fill="rgba(124,110,247,0.9)"/>
+              <circle cx="48" cy="46" r="3" fill="rgba(124,110,247,0.9)"/>
+              <circle cx="72" cy="64" r="3.5" fill="rgba(124,110,247,0.9)"/>
+              <circle cx="70" cy="36" r="3" fill="rgba(124,110,247,0.9)"/>
+              <circle cx="92" cy="68" r="3.5" fill="rgba(124,110,247,0.9)"/>
+              <circle cx="94" cy="42" r="3" fill="rgba(124,110,247,0.9)"/>
+              <circle cx="114" cy="82" r="3.5" fill="rgba(124,110,247,0.7)"/>
+              <circle cx="120" cy="62" r="3" fill="rgba(124,110,247,0.7)"/>
+            </g>
+          </svg>
+        </div>
+        <!-- Tracking dots overlay -->
+        <div class="track-dot" style="top:38%;left:32%;animation-delay:0.1s"></div>
+        <div class="track-dot" style="top:24%;left:44%;animation-delay:0.3s"></div>
+        <div class="track-dot" style="top:20%;left:56%;animation-delay:0.5s"></div>
+        <div class="track-dot" style="top:26%;left:67%;animation-delay:0.2s"></div>
+      </div>
+      <div class="camera-info">
+        <div class="rec-indicator"><div class="rec-dot"></div>LIVE</div>
+        <div class="camera-stats" id="fps-display">30 FPS · 720p</div>
+      </div>
+    </div>
+
+    <!-- Result panel -->
+    <div class="result-panel">
+      <div>
+        <span class="panel-label">Interpreted Sign</span>
+        <div class="word-display idle-state" id="word-display">
+          <div class="idle-text" id="display-content">Press <strong style="color:var(--accent)">Simulate</strong><br>to begin recognition</div>
+        </div>
+      </div>
+
+      <div class="confidence-section">
+        <div class="conf-header">
+          <span class="panel-label">Confidence Level</span>
+          <span class="conf-value" id="conf-value" style="color:var(--muted)">—</span>
+        </div>
+        <div class="conf-bar-track">
+          <div class="conf-bar-fill" id="conf-fill" style="width:0%;background:var(--muted)"></div>
+          <div class="threshold-marker"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Controls -->
+  <div class="controls">
+    <button class="ctrl-btn" id="btn-clear" onclick="simulateSign(true)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+      Simulate Clear Sign
+    </button>
+    <button class="ctrl-btn" id="btn-unclear" onclick="simulateSign(false)">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Simulate Unclear Sign
+    </button>
+    <button class="ctrl-btn" id="btn-random" onclick="simulateRandom()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+      Random Gesture
+    </button>
+    <button class="ctrl-btn danger-btn" onclick="clearAll()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+      Clear All
+    </button>
+  </div>
+
+  <!-- Sentence builder -->
+  <div class="sentence-panel">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <span class="panel-label">Built Sentence</span>
+      <span style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace">Only confirmed signs added</span>
+    </div>
+    <div class="sentence-display" id="sentence-display">
+      <div class="cursor-blink"></div>
+    </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-panel">
+    <div class="history-header">
+      <span class="panel-label">Recognition History</span>
+      <span id="history-count" style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">0 attempts</span>
+    </div>
+    <div class="history-list" id="history-list">
+      <div class="empty-history" id="empty-history">No recognition attempts yet</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const SIGNS = [
+  'HELLO','THANK YOU','PLEASE','YES','NO','HELP','WATER','FOOD',
+  'HOME','LOVE','SORRY','GOOD','BAD','MORE','STOP','GO',
+  'NAME','WHERE','WHAT','WHEN'
+];
+
+let history = [];
+let sentence = [];
+let totalClear = 0, totalUnclear = 0;
+let handAnim = null;
+
+const THRESHOLD = 0.75;
+
+function getConfColor(c) {
+  if (c >= THRESHOLD) return 'var(--accent2)';
+  if (c >= 0.5) return 'var(--warn)';
+  return 'var(--danger)';
+}
+
+function animateHand(unclear) {
+  const svg = document.getElementById('hand-svg');
+  if (unclear) {
+    svg.style.animation = 'none';
+    svg.style.opacity = '0.4';
+    svg.style.filter = 'blur(1.5px)';
+    setTimeout(()=> { svg.style.opacity = ''; svg.style.filter = ''; }, 800);
+  } else {
+    const fingers = document.getElementById('fingers');
+    fingers.style.transition = 'all 0.3s';
+    svg.style.transform = 'scale(1.05)';
+    setTimeout(()=> { svg.style.transform = ''; }, 300);
+  }
+}
+
+function updateConfBar(conf) {
+  const fill = document.getElementById('conf-fill');
+  const val = document.getElementById('conf-value');
+  const pct = Math.round(conf * 100);
+  fill.style.width = pct + '%';
+  fill.style.background = getConfColor(conf);
+  val.textContent = pct + '%';
+  val.style.color = getConfColor(conf);
+}
+
+function showResult(word, conf) {
+  const display = document.getElementById('word-display');
+  const content = document.getElementById('display-content');
+  const isClean = conf >= THRESHOLD;
+
+  display.className = 'word-display ' + (isClean ? 'clear-state' : 'unclear-state');
+
+  if (isClean) {
+    content.innerHTML = `<div class="interpreted-word">${word}</div>`;
+  } else {
+    content.innerHTML = `
+      <div class="unclear-label">
+        <div class="unclear-icon">⚠</div>
+        <div class="unclear-text">Sign unclear — please<br>repeat the gesture.</div>
+        <div class="unclear-sub">Confidence below 75% threshold</div>
+      </div>`;
+  }
+}
+
+function addHistory(word, conf) {
+  const isClean = conf >= THRESHOLD;
+  const pct = Math.round(conf * 100);
+
+  const item = document.createElement('div');
+  item.className = 'history-item';
+  item.innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px">
+      <span class="history-word" style="color:${isClean ? 'var(--accent2)' : 'var(--muted)'}">${isClean ? word : '???'}</span>
+      <span style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace">
+        attempt #${history.length+1}
+      </span>
+    </div>
+    <div class="history-meta">
+      <span class="history-conf" style="color:${getConfColor(conf)}">${pct}%</span>
+      <span class="history-badge ${isClean ? 'badge-clear' : 'badge-unclear'}">${isClean ? 'CLEAR' : 'UNCLEAR'}</span>
+    </div>`;
+
+  history.push({ word, conf, isClean });
+
+  const list = document.getElementById('history-list');
+  const empty = document.getElementById('empty-history');
+  if (empty) empty.remove();
+
+  list.insertBefore(item, list.firstChild);
+  document.getElementById('history-count').textContent = history.length + ' attempt' + (history.length !== 1 ? 's' : '');
+
+  if (isClean) {
+    totalClear++;
+    sentence.push(word);
+    updateSentence();
+  } else {
+    totalUnclear++;
+  }
+
+  document.getElementById('stat-total').textContent = history.length;
+  document.getElementById('stat-clear').textContent = totalClear;
+  document.getElementById('stat-unclear').textContent = totalUnclear;
+}
+
+function updateSentence() {
+  const display = document.getElementById('sentence-display');
+  display.innerHTML = '';
+  sentence.forEach(w => {
+    const span = document.createElement('span');
+    span.className = 'sentence-word';
+    span.textContent = w;
+    display.appendChild(span);
+  });
+  const cursor = document.createElement('div');
+  cursor.className = 'cursor-blink';
+  display.appendChild(cursor);
+}
+
+function simulateSign(forceClean) {
+  const word = SIGNS[Math.floor(Math.random() * SIGNS.length)];
+  let conf;
+  if (forceClean) {
+    conf = 0.75 + Math.random() * 0.24;
+  } else {
+    conf = 0.20 + Math.random() * 0.52;
+  }
+  conf = Math.min(0.99, conf);
+
+  animateHand(!forceClean);
+  updateConfBar(conf);
+  showResult(word, conf);
+  addHistory(word, conf);
+}
+
+function simulateRandom() {
+  const word = SIGNS[Math.floor(Math.random() * SIGNS.length)];
+  const conf = 0.30 + Math.random() * 0.68;
+  const isClean = conf >= THRESHOLD;
+
+  animateHand(!isClean);
+  updateConfBar(conf);
+  showResult(word, conf);
+  addHistory(word, conf);
+}
+
+function clearAll() {
+  history = []; sentence = [];
+  totalClear = 0; totalUnclear = 0;
+
+  document.getElementById('stat-total').textContent = '0';
+  document.getElementById('stat-clear').textContent = '0';
+  document.getElementById('stat-unclear').textContent = '0';
+  document.getElementById('history-count').textContent = '0 attempts';
+
+  const list = document.getElementById('history-list');
+  list.innerHTML = '<div class="empty-history" id="empty-history">No recognition attempts yet</div>';
+
+  const display = document.getElementById('word-display');
+  display.className = 'word-display idle-state';
+  document.getElementById('display-content').innerHTML = 'Press <strong style="color:var(--accent)">Simulate</strong><br>to begin recognition';
+
+  const conf = document.getElementById('conf-fill');
+  conf.style.width = '0%';
+  document.getElementById('conf-value').textContent = '—';
+  document.getElementById('conf-value').style.color = 'var(--muted)';
+
+  updateSentence();
+}
+
+// Subtle hand breathing animation
+let t = 0;
+(function animLoop() {
+  t += 0.02;
+  const svg = document.getElementById('hand-svg');
+  const dy = Math.sin(t) * 3;
+  const sc = 1 + Math.sin(t * 0.7) * 0.01;
+  svg.style.transform = `translateY(${dy}px) scale(${sc})`;
+  requestAnimationFrame(animLoop);
+})();
+</script>
