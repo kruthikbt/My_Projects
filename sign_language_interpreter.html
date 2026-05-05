@@ -1,833 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Sign Language Interpreter — AI Powered</title>
+
+<!-- MediaPipe Hands -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0a0a0f;--surface:#111118;--panel:#16161e;
+  --border:rgba(255,255,255,0.07);
+  --accent:#7c6ef7;--accent2:#4ecdc4;
+  --warn:#f7a44e;--danger:#f76e6e;
+  --text:#e8e8f0;--muted:#888899;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'Syne',sans-serif;overflow-x:hidden}
 
-  :root {
-    --bg: #0a0a0f;
-    --surface: #111118;
-    --panel: #16161e;
-    --border: rgba(255,255,255,0.07);
-    --accent: #7c6ef7;
-    --accent2: #4ecdc4;
-    --warn: #f7a44e;
-    --danger: #f76e6e;
-    --text: #e8e8f0;
-    --muted: #888899;
-    --glow: rgba(124,110,247,0.35);
-  }
+/* ── LOADING SCREEN ── */
+#loading-screen{
+  position:fixed;inset:0;background:var(--bg);z-index:9999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1.5rem;
+  transition:opacity 0.6s ease;
+}
+.load-spinner{
+  width:56px;height:56px;border-radius:50%;
+  border:3px solid rgba(124,110,247,0.15);
+  border-top-color:var(--accent);
+  animation:spin 0.9s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.load-title{font-size:1.5rem;font-weight:800;letter-spacing:-0.02em;
+  background:linear-gradient(135deg,#e8e8f0 30%,#7c6ef7 70%,#4ecdc4);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.load-msg{font-size:0.8rem;color:var(--muted);font-family:'Space Mono',monospace}
 
-  body {
-    font-family: 'Syne', sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-    overflow-x: hidden;
-  }
+/* ── APP ── */
+.app{max-width:1100px;margin:0 auto;padding:1.5rem 1.2rem 4rem}
 
-  .app {
-    max-width: 900px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem 4rem;
-  }
+/* Header */
+.header{text-align:center;margin-bottom:2rem}
+.header-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:rgba(124,110,247,0.12);border:0.5px solid rgba(124,110,247,0.3);
+  border-radius:100px;padding:5px 14px;font-size:11px;
+  font-family:'Space Mono',monospace;color:var(--accent);
+  letter-spacing:0.08em;text-transform:uppercase;margin-bottom:0.8rem;
+}
+.pulse-dot{width:6px;height:6px;background:var(--accent2);border-radius:50%;animation:pdot 1.4s ease-in-out infinite}
+@keyframes pdot{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+.header h1{font-size:clamp(2rem,5vw,3rem);font-weight:800;letter-spacing:-0.03em;line-height:1.1;
+  background:linear-gradient(135deg,#e8e8f0 30%,#7c6ef7 70%,#4ecdc4);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.header p{margin-top:0.6rem;color:var(--muted);font-size:0.9rem}
 
-  /* Header */
-  .header {
-    text-align: center;
-    margin-bottom: 2.5rem;
-  }
-  .header-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    background: rgba(124,110,247,0.12);
-    border: 0.5px solid rgba(124,110,247,0.3);
-    border-radius: 100px;
-    padding: 5px 14px;
-    font-size: 11px;
-    font-family: 'Space Mono', monospace;
-    color: var(--accent);
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-  }
-  .pulse-dot {
-    width: 6px; height: 6px;
-    background: var(--accent2);
-    border-radius: 50%;
-    animation: pulse-dot 1.4s ease-in-out infinite;
-  }
-  @keyframes pulse-dot {
-    0%,100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.7); }
-  }
-  .header h1 {
-    font-size: clamp(2rem, 5vw, 3.2rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
-    background: linear-gradient(135deg, #e8e8f0 30%, #7c6ef7 70%, #4ecdc4);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .header p {
-    margin-top: 0.75rem;
-    color: var(--muted);
-    font-size: 0.95rem;
-    font-weight: 400;
-  }
+/* Layout */
+.main-grid{display:grid;grid-template-columns:1fr 380px;gap:1rem;align-items:start}
+@media(max-width:820px){.main-grid{grid-template-columns:1fr}}
 
-  /* Main layout */
-  .main-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
-    margin-bottom: 1rem;
-  }
-  @media(max-width: 600px) {
-    .main-grid { grid-template-columns: 1fr; }
-  }
+/* Camera */
+.camera-wrap{
+  background:var(--surface);border:0.5px solid var(--border);
+  border-radius:16px;overflow:hidden;position:relative;
+}
+.video-container{position:relative;width:100%;aspect-ratio:16/9;background:#07070f;overflow:hidden}
+#input-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:none}
+#output-canvas{position:absolute;inset:0;width:100%;height:100%;transform:scaleX(-1)}
+.scanline{
+  position:absolute;top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(78,205,196,0.5),transparent);
+  animation:scan 2.8s linear infinite;pointer-events:none;z-index:4;
+}
+@keyframes scan{from{top:0}to{top:100%}}
+.bracket{position:absolute;width:22px;height:22px;pointer-events:none;z-index:5}
+.btl{top:10px;left:10px;border-top:2px solid var(--accent2);border-left:2px solid var(--accent2)}
+.btr{top:10px;right:10px;border-top:2px solid var(--accent2);border-right:2px solid var(--accent2)}
+.bbl{bottom:10px;left:10px;border-bottom:2px solid var(--accent2);border-left:2px solid var(--accent2)}
+.bbr{bottom:10px;right:10px;border-bottom:2px solid var(--accent2);border-right:2px solid var(--accent2)}
 
-  /* Camera panel */
-  .camera-panel {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 16px;
-    overflow: hidden;
-    position: relative;
-  }
-  .camera-feed {
-    width: 100%;
-    aspect-ratio: 4/3;
-    background: #0c0c14;
-    position: relative;
-    overflow: hidden;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+.no-cam-msg{
+  position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1rem;z-index:3;
+}
+.no-cam-icon{font-size:3rem;opacity:0.3}
+.no-cam-text{color:var(--muted);font-size:0.85rem;text-align:center;line-height:1.6}
 
-  /* Animated hand SVG */
-  .hand-container {
-    position: relative;
-    width: 160px;
-    height: 200px;
-  }
-  .hand-svg {
-    position: absolute;
-    top: 0; left: 0;
-    width: 100%; height: 100%;
-  }
+.cam-bar{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 14px;border-top:0.5px solid var(--border);
+}
+.rec{display:flex;align-items:center;gap:6px;font-family:'Space Mono',monospace;font-size:11px;color:var(--danger)}
+.rec-dot{width:7px;height:7px;border-radius:50%;background:var(--danger);animation:pdot 0.8s ease-in-out infinite}
+.fps-txt{font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)}
 
-  /* Scanline overlay */
-  .scanline {
-    position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 2px;
-    background: linear-gradient(90deg, transparent, rgba(78,205,196,0.6), transparent);
-    animation: scan 2.5s linear infinite;
-    pointer-events: none;
-  }
-  @keyframes scan {
-    from { top: 0; }
-    to { top: 100%; }
-  }
+/* Start button */
+#start-btn{
+  display:block;width:calc(100% - 2rem);margin:1rem;
+  background:linear-gradient(135deg,rgba(124,110,247,0.2),rgba(78,205,196,0.1));
+  border:0.5px solid rgba(124,110,247,0.4);border-radius:10px;
+  padding:0.8rem;color:var(--accent);font-family:'Syne',sans-serif;
+  font-size:0.9rem;font-weight:700;cursor:pointer;transition:all 0.2s;letter-spacing:0.02em;
+}
+#start-btn:hover{background:rgba(124,110,247,0.25);box-shadow:0 0 20px rgba(124,110,247,0.15)}
 
-  /* Corner brackets */
-  .bracket {
-    position: absolute;
-    width: 20px; height: 20px;
-    pointer-events: none;
-  }
-  .bracket-tl { top: 12px; left: 12px; border-top: 2px solid var(--accent2); border-left: 2px solid var(--accent2); }
-  .bracket-tr { top: 12px; right: 12px; border-top: 2px solid var(--accent2); border-right: 2px solid var(--accent2); }
-  .bracket-bl { bottom: 12px; left: 12px; border-bottom: 2px solid var(--accent2); border-left: 2px solid var(--accent2); }
-  .bracket-br { bottom: 12px; right: 12px; border-bottom: 2px solid var(--accent2); border-right: 2px solid var(--accent2); }
+/* Right panel */
+.right-panel{display:flex;flex-direction:column;gap:0.9rem}
 
-  /* Tracking dots */
-  .track-dot {
-    position: absolute;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--accent2);
-    box-shadow: 0 0 6px var(--accent2);
-    animation: track-blink 1s ease-in-out infinite;
-  }
-  @keyframes track-blink {
-    0%,100% { opacity: 1; }
-    50% { opacity: 0.3; }
-  }
+/* Result card */
+.result-card{
+  background:var(--surface);border:0.5px solid var(--border);
+  border-radius:16px;padding:1.2rem;
+}
+.card-label{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:0.75rem}
 
-  /* Camera info bar */
-  .camera-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 10px 14px;
-    border-top: 0.5px solid var(--border);
-  }
-  .rec-indicator {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-family: 'Space Mono', monospace;
-    font-size: 11px;
-    color: var(--danger);
-  }
-  .rec-dot {
-    width: 7px; height: 7px;
-    border-radius: 50%;
-    background: var(--danger);
-    animation: pulse-dot 0.8s ease-in-out infinite;
-  }
-  .camera-stats {
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    color: var(--muted);
-  }
+.word-display{
+  min-height:110px;display:flex;align-items:center;justify-content:center;flex-direction:column;
+  gap:8px;border-radius:12px;border:1.5px solid var(--border);padding:1.2rem;
+  transition:all 0.4s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden;
+}
+.word-display.clear{border-color:rgba(78,205,196,0.45);background:rgba(78,205,196,0.04)}
+.word-display.unclear{border-color:rgba(247,110,110,0.5);background:rgba(247,110,110,0.04);animation:flash 0.55s ease-in-out 3}
+@keyframes flash{0%,100%{box-shadow:none}50%{box-shadow:0 0 0 2px rgba(247,110,110,0.5),0 0 24px rgba(247,110,110,0.18)}}
 
-  /* Result panel */
-  .result-panel {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 16px;
-    padding: 1.25rem;
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-  .panel-label {
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
+.big-word{font-size:2.4rem;font-weight:800;letter-spacing:-0.02em;color:var(--accent2);animation:win .45s cubic-bezier(.16,1,.3,1)}
+@keyframes win{from{opacity:0;transform:translateY(10px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+.unclear-block{display:flex;flex-direction:column;align-items:center;gap:6px;animation:win .4s ease}
+.unclear-ico{width:38px;height:38px;border-radius:50%;background:rgba(247,110,110,0.14);border:1.5px solid rgba(247,110,110,0.4);display:flex;align-items:center;justify-content:center;font-size:1.2rem}
+.unclear-title{font-size:.9rem;font-weight:700;color:var(--danger);text-align:center}
+.unclear-sub{font-size:.7rem;color:rgba(247,110,110,.6);text-align:center}
+.idle-hint{color:var(--muted);font-size:.82rem;text-align:center;line-height:1.6}
 
-  /* Word display */
-  .word-display {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-direction: column;
-    gap: 8px;
-    min-height: 100px;
-    border-radius: 12px;
-    border: 1.5px solid var(--border);
-    padding: 1.5rem 1rem;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .word-display.clear-state {
-    border-color: rgba(78,205,196,0.4);
-    background: rgba(78,205,196,0.04);
-  }
-  .word-display.unclear-state {
-    border-color: rgba(247,110,110,0.5);
-    background: rgba(247,110,110,0.04);
-    animation: flash-border 0.6s ease-in-out 3;
-  }
-  @keyframes flash-border {
-    0%,100% { box-shadow: none; }
-    50% { box-shadow: 0 0 0 2px rgba(247,110,110,0.5), 0 0 20px rgba(247,110,110,0.2); }
-  }
-  .word-display.idle-state {
-    border-color: var(--border);
-    background: transparent;
-  }
+/* Confidence */
+.conf-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px}
+.conf-pct{font-family:'Space Mono',monospace;font-size:1.05rem;font-weight:700;transition:color .4s}
+.conf-track{height:6px;background:rgba(255,255,255,.05);border-radius:100px;overflow:visible;position:relative}
+.conf-fill{height:100%;border-radius:100px;transition:width .55s cubic-bezier(.16,1,.3,1),background .4s}
+.thresh-line{position:absolute;top:-3px;bottom:-3px;width:2px;background:rgba(255,255,255,.22);left:75%;border-radius:2px}
+.thresh-line::after{content:'75%';position:absolute;top:-16px;left:50%;transform:translateX(-50%);font-family:'Space Mono',monospace;font-size:8px;color:rgba(255,255,255,.3);white-space:nowrap}
 
-  .interpreted-word {
-    font-size: 2.2rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    animation: word-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
-    color: var(--accent2);
-  }
-  @keyframes word-in {
-    from { opacity: 0; transform: translateY(12px) scale(0.9); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .unclear-label {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 6px;
-    animation: word-in 0.4s ease;
-  }
-  .unclear-icon {
-    width: 36px; height: 36px;
-    border-radius: 50%;
-    background: rgba(247,110,110,0.15);
-    border: 1.5px solid rgba(247,110,110,0.4);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 18px;
-  }
-  .unclear-text {
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: var(--danger);
-    text-align: center;
-  }
-  .unclear-sub {
-    font-size: 0.72rem;
-    color: rgba(247,110,110,0.6);
-    font-weight: 400;
-    text-align: center;
-  }
-  .idle-text {
-    color: var(--muted);
-    font-size: 0.85rem;
-    text-align: center;
-  }
+/* Landmark detail */
+.landmark-card{
+  background:var(--surface);border:0.5px solid var(--border);
+  border-radius:16px;padding:1.2rem;
+}
+.lm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:0.7rem}
+.lm-chip{
+  background:var(--panel);border:0.5px solid var(--border);border-radius:8px;
+  padding:6px 8px;text-align:center;
+}
+.lm-name{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;text-transform:uppercase;letter-spacing:.05em}
+.lm-val{font-size:11px;font-weight:600;font-family:'Space Mono',monospace;color:var(--accent2);margin-top:2px}
 
-  /* Confidence meter */
-  .confidence-section { }
-  .conf-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 8px;
-  }
-  .conf-value {
-    font-family: 'Space Mono', monospace;
-    font-size: 1.1rem;
-    font-weight: 700;
-    transition: color 0.4s;
-  }
-  .conf-bar-track {
-    height: 6px;
-    background: rgba(255,255,255,0.05);
-    border-radius: 100px;
-    overflow: hidden;
-    position: relative;
-  }
-  .conf-bar-fill {
-    height: 100%;
-    border-radius: 100px;
-    transition: width 0.6s cubic-bezier(0.16, 1, 0.3, 1), background 0.4s;
-  }
-  /* Threshold line */
-  .threshold-marker {
-    position: absolute;
-    top: -2px; bottom: -2px;
-    width: 2px;
-    background: rgba(255,255,255,0.25);
-    left: 75%;
-    border-radius: 2px;
-  }
-  .threshold-marker::after {
-    content: '75%';
-    position: absolute;
-    top: -16px;
-    left: 50%;
-    transform: translateX(-50%);
-    font-family: 'Space Mono', monospace;
-    font-size: 8px;
-    color: rgba(255,255,255,0.3);
-    white-space: nowrap;
-  }
+/* Stats */
+.stats-row{display:grid;grid-template-columns:repeat(3,1fr);gap:0.75rem}
+.stat-c{
+  background:var(--surface);border:0.5px solid var(--border);border-radius:12px;
+  padding:.9rem;text-align:center;
+}
+.stat-v{font-size:1.5rem;font-weight:800;font-family:'Space Mono',monospace;display:block;line-height:1;margin-bottom:3px}
+.stat-l{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 
-  /* Controls */
-  .controls {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-  .ctrl-btn {
-    background: var(--panel);
-    border: 0.5px solid var(--border);
-    border-radius: 10px;
-    padding: 0.75rem;
-    color: var(--text);
-    font-family: 'Syne', sans-serif;
-    font-size: 0.82rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex; align-items: center; justify-content: center; gap: 7px;
-  }
-  .ctrl-btn:hover { background: rgba(124,110,247,0.12); border-color: rgba(124,110,247,0.3); color: var(--accent); }
-  .ctrl-btn.active { background: rgba(124,110,247,0.15); border-color: rgba(124,110,247,0.5); color: var(--accent); }
-  .ctrl-btn.danger-btn:hover { background: rgba(247,110,110,0.12); border-color: rgba(247,110,110,0.3); color: var(--danger); }
+/* Sentence */
+.sentence-card{background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:1.2rem}
+.sentence-box{
+  min-height:50px;display:flex;flex-wrap:wrap;align-items:center;gap:6px;
+  padding:9px 11px;background:var(--panel);border-radius:9px;
+  border:0.5px solid var(--border);margin-top:0.7rem;
+}
+.sw{background:rgba(124,110,247,.12);border:0.5px solid rgba(124,110,247,.3);color:var(--accent);
+  font-size:.82rem;font-weight:600;padding:3px 10px;border-radius:6px;animation:win .3s ease}
+.cur{width:2px;height:18px;background:var(--accent);border-radius:1px;animation:cblink 1s step-end infinite}
+@keyframes cblink{0%,100%{opacity:1}50%{opacity:0}}
 
-  /* History */
-  .history-panel {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 16px;
-    padding: 1.25rem;
-  }
-  .history-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 1rem;
-  }
-  .history-list {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    max-height: 220px;
-    overflow-y: auto;
-  }
-  .history-list::-webkit-scrollbar { width: 3px; }
-  .history-list::-webkit-scrollbar-track { background: transparent; }
-  .history-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+/* History */
+.history-card{background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:1.2rem}
+.hist-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem}
+.hist-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
+.hist-list::-webkit-scrollbar{width:3px}
+.hist-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.hi{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:8px 11px;border-radius:7px;background:var(--panel);
+  border:0.5px solid var(--border);animation:slide .3s ease;
+}
+@keyframes slide{from{opacity:0;transform:translateX(-6px)}to{opacity:1;transform:translateX(0)}}
+.hi-word{font-size:.88rem;font-weight:600}
+.hi-meta{display:flex;align-items:center;gap:7px}
+.hi-pct{font-family:'Space Mono',monospace;font-size:10px}
+.badge{font-size:9px;font-family:'Space Mono',monospace;padding:2px 7px;border-radius:100px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.bc{background:rgba(78,205,196,.12);color:var(--accent2);border:0.5px solid rgba(78,205,196,.3)}
+.bu{background:rgba(247,110,110,.12);color:var(--danger);border:0.5px solid rgba(247,110,110,.3)}
+.empty{text-align:center;color:var(--muted);font-size:.78rem;padding:1.5rem 0}
 
-  .history-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 9px 12px;
-    border-radius: 8px;
-    background: var(--panel);
-    border: 0.5px solid var(--border);
-    animation: slide-in 0.3s ease;
-  }
-  @keyframes slide-in {
-    from { opacity: 0; transform: translateX(-8px); }
-    to { opacity: 1; transform: translateX(0); }
-  }
-  .history-word {
-    font-size: 0.9rem;
-    font-weight: 600;
-  }
-  .history-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .history-conf {
-    font-family: 'Space Mono', monospace;
-    font-size: 10px;
-  }
-  .history-badge {
-    font-size: 9px;
-    font-family: 'Space Mono', monospace;
-    padding: 2px 7px;
-    border-radius: 100px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-  }
-  .badge-clear { background: rgba(78,205,196,0.12); color: var(--accent2); border: 0.5px solid rgba(78,205,196,0.3); }
-  .badge-unclear { background: rgba(247,110,110,0.12); color: var(--danger); border: 0.5px solid rgba(247,110,110,0.3); }
+/* Ctrl bar */
+.ctrl-bar{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:.5rem}
+.cbtn{
+  flex:1;min-width:100px;background:var(--panel);border:0.5px solid var(--border);border-radius:9px;
+  padding:.6rem .8rem;color:var(--text);font-family:'Syne',sans-serif;font-size:.78rem;font-weight:600;
+  cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:6px;
+}
+.cbtn:hover{background:rgba(124,110,247,.12);border-color:rgba(124,110,247,.3);color:var(--accent)}
+.cbtn.red:hover{background:rgba(247,110,110,.1);border-color:rgba(247,110,110,.3);color:var(--danger)}
 
-  .empty-history {
-    text-align: center;
-    color: var(--muted);
-    font-size: 0.8rem;
-    padding: 2rem 0;
-  }
+/* Gesture guide */
+.guide-card{background:var(--surface);border:0.5px solid var(--border);border-radius:16px;padding:1.2rem}
+.guide-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(80px,1fr));gap:6px;margin-top:.7rem}
+.gesture-chip{
+  background:var(--panel);border:0.5px solid var(--border);border-radius:8px;
+  padding:8px 6px;text-align:center;cursor:default;
+}
+.gesture-icon{font-size:1.4rem}
+.gesture-name{font-size:9px;color:var(--muted);font-family:'Space Mono',monospace;margin-top:3px;text-transform:uppercase}
 
-  /* Sentence builder */
-  .sentence-panel {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 16px;
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-  }
-  .sentence-display {
-    min-height: 52px;
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 6px;
-    padding: 10px 12px;
-    background: var(--panel);
-    border-radius: 10px;
-    border: 0.5px solid var(--border);
-    margin-top: 0.75rem;
-  }
-  .sentence-word {
-    background: rgba(124,110,247,0.12);
-    border: 0.5px solid rgba(124,110,247,0.3);
-    color: var(--accent);
-    font-size: 0.85rem;
-    font-weight: 600;
-    padding: 3px 10px;
-    border-radius: 6px;
-    animation: word-in 0.3s ease;
-  }
-  .cursor-blink {
-    width: 2px; height: 18px;
-    background: var(--accent);
-    border-radius: 1px;
-    animation: cursor-blink 1s step-end infinite;
-  }
-  @keyframes cursor-blink {
-    0%,100% { opacity: 1; }
-    50% { opacity: 0; }
-  }
-
-  /* Stats row */
-  .stats-row {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1rem;
-  }
-  .stat-card {
-    background: var(--surface);
-    border: 0.5px solid var(--border);
-    border-radius: 12px;
-    padding: 1rem;
-    text-align: center;
-  }
-  .stat-value {
-    font-size: 1.6rem;
-    font-weight: 800;
-    font-family: 'Space Mono', monospace;
-    display: block;
-    line-height: 1;
-    margin-bottom: 4px;
-  }
-  .stat-label {
-    font-size: 0.7rem;
-    color: var(--muted);
-    text-transform: uppercase;
-    letter-spacing: 0.07em;
-  }
+/* Toast */
+#toast{
+  position:fixed;bottom:1.5rem;right:1.5rem;background:var(--panel);
+  border:0.5px solid rgba(124,110,247,.3);border-radius:10px;
+  padding:10px 16px;font-size:.8rem;color:var(--text);z-index:999;
+  transform:translateY(10px);opacity:0;transition:all .3s;pointer-events:none;
+  font-family:'Space Mono',monospace;
+}
+#toast.show{opacity:1;transform:translateY(0)}
 </style>
+</head>
+<body>
 
-<div class="app">
-  <h2 class="sr-only" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);">Sign Language Interpreter with confidence threshold filtering</h2>
+<!-- Loading screen -->
+<div id="loading-screen">
+  <div class="load-spinner"></div>
+  <div class="load-title">Sign Language AI</div>
+  <div class="load-msg" id="load-msg">Loading MediaPipe Hands model…</div>
+</div>
+
+<div class="app" id="app" style="display:none">
 
   <div class="header">
-    <div class="header-badge"><div class="pulse-dot"></div>AI Vision Active</div>
+    <div class="header-badge"><div class="pulse-dot"></div>Live Camera · AI Recognition</div>
     <h1>Sign Language<br>Interpreter</h1>
-    <p>Real-time gesture recognition with confidence filtering</p>
+    <p>Show ASL hand gestures to your camera — confidence threshold at 75%</p>
   </div>
 
-  <!-- Stats row -->
-  <div class="stats-row">
-    <div class="stat-card">
-      <span class="stat-value" id="stat-total" style="color:var(--accent)">0</span>
-      <span class="stat-label">Total Signs</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-clear" style="color:var(--accent2)">0</span>
-      <span class="stat-label">Recognized</span>
-    </div>
-    <div class="stat-card">
-      <span class="stat-value" id="stat-unclear" style="color:var(--danger)">0</span>
-      <span class="stat-label">Unclear</span>
-    </div>
+  <!-- Stats -->
+  <div class="stats-row" style="margin-bottom:1rem">
+    <div class="stat-c"><span class="stat-v" id="s-total" style="color:var(--accent)">0</span><span class="stat-l">Total Signs</span></div>
+    <div class="stat-c"><span class="stat-v" id="s-clear" style="color:var(--accent2)">0</span><span class="stat-l">Recognized</span></div>
+    <div class="stat-c"><span class="stat-v" id="s-unclear" style="color:var(--danger)">0</span><span class="stat-l">Unclear</span></div>
   </div>
 
-  <!-- Main grid: camera + result -->
-  <div class="main-grid" style="margin-bottom:1rem">
-    <!-- Camera panel -->
-    <div class="camera-panel">
-      <div class="camera-feed" id="camera-feed">
-        <div class="bracket bracket-tl"></div>
-        <div class="bracket bracket-tr"></div>
-        <div class="bracket bracket-bl"></div>
-        <div class="bracket bracket-br"></div>
-        <div class="scanline" id="scanline"></div>
-        <div class="hand-container">
-          <svg class="hand-svg" id="hand-svg" viewBox="0 0 160 200" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="2" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-            </defs>
-            <!-- Palm -->
-            <ellipse cx="80" cy="140" rx="38" ry="42" fill="rgba(124,110,247,0.15)" stroke="rgba(124,110,247,0.5)" stroke-width="1.5"/>
-            <!-- Fingers (5 lines with joints) -->
-            <g id="fingers" filter="url(#glow)">
-              <!-- Thumb -->
-              <line x1="44" y1="130" x2="22" y2="104" stroke="rgba(78,205,196,0.8)" stroke-width="7" stroke-linecap="round"/>
-              <line x1="22" y1="104" x2="10" y2="82" stroke="rgba(78,205,196,0.8)" stroke-width="6" stroke-linecap="round"/>
-              <!-- Index -->
-              <line x1="58" y1="108" x2="52" y2="72" stroke="rgba(124,110,247,0.9)" stroke-width="7" stroke-linecap="round"/>
-              <line x1="52" y1="72" x2="48" y2="46" stroke="rgba(124,110,247,0.9)" stroke-width="6" stroke-linecap="round"/>
-              <!-- Middle -->
-              <line x1="74" y1="104" x2="72" y2="64" stroke="rgba(124,110,247,0.9)" stroke-width="7" stroke-linecap="round"/>
-              <line x1="72" y1="64" x2="70" y2="36" stroke="rgba(124,110,247,0.9)" stroke-width="6" stroke-linecap="round"/>
-              <!-- Ring -->
-              <line x1="90" y1="106" x2="92" y2="68" stroke="rgba(124,110,247,0.9)" stroke-width="7" stroke-linecap="round"/>
-              <line x1="92" y1="68" x2="94" y2="42" stroke="rgba(124,110,247,0.9)" stroke-width="6" stroke-linecap="round"/>
-              <!-- Pinky -->
-              <line x1="105" y1="114" x2="114" y2="82" stroke="rgba(124,110,247,0.7)" stroke-width="6" stroke-linecap="round"/>
-              <line x1="114" y1="82" x2="120" y2="62" stroke="rgba(124,110,247,0.7)" stroke-width="5" stroke-linecap="round"/>
-            </g>
-            <!-- Joint dots -->
-            <g id="joints">
-              <circle cx="22" cy="104" r="3.5" fill="rgba(78,205,196,0.9)"/>
-              <circle cx="10" cy="82" r="3" fill="rgba(78,205,196,0.9)"/>
-              <circle cx="52" cy="72" r="3.5" fill="rgba(124,110,247,0.9)"/>
-              <circle cx="48" cy="46" r="3" fill="rgba(124,110,247,0.9)"/>
-              <circle cx="72" cy="64" r="3.5" fill="rgba(124,110,247,0.9)"/>
-              <circle cx="70" cy="36" r="3" fill="rgba(124,110,247,0.9)"/>
-              <circle cx="92" cy="68" r="3.5" fill="rgba(124,110,247,0.9)"/>
-              <circle cx="94" cy="42" r="3" fill="rgba(124,110,247,0.9)"/>
-              <circle cx="114" cy="82" r="3.5" fill="rgba(124,110,247,0.7)"/>
-              <circle cx="120" cy="62" r="3" fill="rgba(124,110,247,0.7)"/>
-            </g>
-          </svg>
+  <div class="main-grid">
+
+    <!-- LEFT: Camera -->
+    <div>
+      <div class="camera-wrap">
+        <div class="video-container">
+          <div class="bracket btl"></div><div class="bracket btr"></div>
+          <div class="bracket bbl"></div><div class="bracket bbr"></div>
+          <div class="scanline"></div>
+          <video id="input-video" playsinline muted></video>
+          <canvas id="output-canvas"></canvas>
+          <div class="no-cam-msg" id="no-cam-msg">
+            <div class="no-cam-icon">📷</div>
+            <div class="no-cam-text">Click <strong style="color:var(--accent)">Start Camera</strong> below<br>to enable live hand tracking</div>
+          </div>
         </div>
-        <!-- Tracking dots overlay -->
-        <div class="track-dot" style="top:38%;left:32%;animation-delay:0.1s"></div>
-        <div class="track-dot" style="top:24%;left:44%;animation-delay:0.3s"></div>
-        <div class="track-dot" style="top:20%;left:56%;animation-delay:0.5s"></div>
-        <div class="track-dot" style="top:26%;left:67%;animation-delay:0.2s"></div>
+        <div class="cam-bar">
+          <div class="rec"><div class="rec-dot"></div><span id="cam-status">WAITING</span></div>
+          <div class="fps-txt" id="fps-txt">— FPS</div>
+        </div>
+        <button id="start-btn" onclick="startCamera()">▶ Start Camera & Begin Recognition</button>
       </div>
-      <div class="camera-info">
-        <div class="rec-indicator"><div class="rec-dot"></div>LIVE</div>
-        <div class="camera-stats" id="fps-display">30 FPS · 720p</div>
-      </div>
-    </div>
 
-    <!-- Result panel -->
-    <div class="result-panel">
-      <div>
-        <span class="panel-label">Interpreted Sign</span>
-        <div class="word-display idle-state" id="word-display">
-          <div class="idle-text" id="display-content">Press <strong style="color:var(--accent)">Simulate</strong><br>to begin recognition</div>
+      <!-- Landmark detail -->
+      <div class="landmark-card" style="margin-top:.9rem">
+        <div class="card-label">Hand Landmark Analysis</div>
+        <div class="lm-grid" id="lm-grid">
+          <div class="lm-chip"><div class="lm-name">Wrist</div><div class="lm-val" id="lm-wrist">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Index Tip</div><div class="lm-val" id="lm-index">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Middle Tip</div><div class="lm-val" id="lm-middle">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Ring Tip</div><div class="lm-val" id="lm-ring">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Pinky Tip</div><div class="lm-val" id="lm-pinky">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Thumb Tip</div><div class="lm-val" id="lm-thumb">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Fingers Up</div><div class="lm-val" id="lm-fingers">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Hand</div><div class="lm-val" id="lm-hand">—</div></div>
+          <div class="lm-chip"><div class="lm-name">Gesture ID</div><div class="lm-val" id="lm-id">—</div></div>
         </div>
       </div>
 
-      <div class="confidence-section">
-        <div class="conf-header">
-          <span class="panel-label">Confidence Level</span>
-          <span class="conf-value" id="conf-value" style="color:var(--muted)">—</span>
-        </div>
-        <div class="conf-bar-track">
-          <div class="conf-bar-fill" id="conf-fill" style="width:0%;background:var(--muted)"></div>
-          <div class="threshold-marker"></div>
+      <!-- Gesture guide -->
+      <div class="guide-card" style="margin-top:.9rem">
+        <div class="card-label">Supported Gestures</div>
+        <div class="guide-grid">
+          <div class="gesture-chip"><div class="gesture-icon">✊</div><div class="gesture-name">FIST</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🖐</div><div class="gesture-name">OPEN</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">☝️</div><div class="gesture-name">ONE</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">✌️</div><div class="gesture-name">TWO/PEACE</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🤟</div><div class="gesture-name">ILY</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">👍</div><div class="gesture-name">THUMBS UP</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">👎</div><div class="gesture-name">THUMBS DOWN</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🤙</div><div class="gesture-name">CALL ME</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">👌</div><div class="gesture-name">OK</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🤞</div><div class="gesture-name">CROSSED</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🖖</div><div class="gesture-name">VULCAN</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🤘</div><div class="gesture-name">ROCK ON</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">👋</div><div class="gesture-name">WAVE/HELLO</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">🤏</div><div class="gesture-name">PINCH</div></div>
+          <div class="gesture-chip"><div class="gesture-icon">4️⃣</div><div class="gesture-name">FOUR</div></div>
         </div>
       </div>
     </div>
-  </div>
 
-  <!-- Controls -->
-  <div class="controls">
-    <button class="ctrl-btn" id="btn-clear" onclick="simulateSign(true)">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-      Simulate Clear Sign
-    </button>
-    <button class="ctrl-btn" id="btn-unclear" onclick="simulateSign(false)">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      Simulate Unclear Sign
-    </button>
-    <button class="ctrl-btn" id="btn-random" onclick="simulateRandom()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
-      Random Gesture
-    </button>
-    <button class="ctrl-btn danger-btn" onclick="clearAll()">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-      Clear All
-    </button>
-  </div>
+    <!-- RIGHT: Results -->
+    <div class="right-panel">
 
-  <!-- Sentence builder -->
-  <div class="sentence-panel">
-    <div style="display:flex;justify-content:space-between;align-items:center">
-      <span class="panel-label">Built Sentence</span>
-      <span style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace">Only confirmed signs added</span>
-    </div>
-    <div class="sentence-display" id="sentence-display">
-      <div class="cursor-blink"></div>
-    </div>
-  </div>
+      <!-- Result + Confidence -->
+      <div class="result-card">
+        <div class="card-label">Interpreted Sign</div>
+        <div class="word-display" id="word-display">
+          <div class="idle-hint" id="disp-content">
+            Enable camera &amp; show<br>a hand gesture to begin
+          </div>
+        </div>
+        <div style="margin-top:1rem">
+          <div class="conf-row">
+            <div class="card-label" style="margin:0">Confidence</div>
+            <span class="conf-pct" id="conf-pct" style="color:var(--muted)">—</span>
+          </div>
+          <div class="conf-track">
+            <div class="conf-fill" id="conf-fill" style="width:0;background:var(--muted)"></div>
+            <div class="thresh-line"></div>
+          </div>
+        </div>
+      </div>
 
-  <!-- History -->
-  <div class="history-panel">
-    <div class="history-header">
-      <span class="panel-label">Recognition History</span>
-      <span id="history-count" style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">0 attempts</span>
-    </div>
-    <div class="history-list" id="history-list">
-      <div class="empty-history" id="empty-history">No recognition attempts yet</div>
+      <!-- Sentence builder -->
+      <div class="sentence-card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div class="card-label" style="margin:0">Built Sentence</div>
+          <div style="font-size:.68rem;color:var(--muted);font-family:'Space Mono',monospace">≥75% only</div>
+        </div>
+        <div class="sentence-box" id="sentence-box">
+          <div class="cur"></div>
+        </div>
+        <div class="ctrl-bar" style="margin-top:.75rem">
+          <button class="cbtn" onclick="removeLastWord()">⌫ Undo</button>
+          <button class="cbtn" onclick="addSpace()">␣ Space</button>
+          <button class="cbtn red" onclick="clearSentence()">✕ Clear</button>
+        </div>
+      </div>
+
+      <!-- History -->
+      <div class="history-card">
+        <div class="hist-hdr">
+          <div class="card-label" style="margin:0">Recognition History</div>
+          <span id="hist-count" style="font-family:'Space Mono',monospace;font-size:10px;color:var(--muted)">0 attempts</span>
+        </div>
+        <div class="hist-list" id="hist-list">
+          <div class="empty" id="hist-empty">No attempts yet</div>
+        </div>
+        <div class="ctrl-bar" style="margin-top:.75rem">
+          <button class="cbtn red" onclick="clearAll()">Clear All</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
+<div id="toast"></div>
+
 <script>
-const SIGNS = [
-  'HELLO','THANK YOU','PLEASE','YES','NO','HELP','WATER','FOOD',
-  'HOME','LOVE','SORRY','GOOD','BAD','MORE','STOP','GO',
-  'NAME','WHERE','WHAT','WHEN'
-];
-
-let history = [];
-let sentence = [];
-let totalClear = 0, totalUnclear = 0;
-let handAnim = null;
-
+// ─────────────────────────────────────────────
+//  GLOBALS
+// ─────────────────────────────────────────────
 const THRESHOLD = 0.75;
+let handsModel = null;
+let cameraStream = null;
+let lastGesture = null;
+let gestureHoldFrames = 0;
+const HOLD_NEEDED = 18; // frames to confirm
+let frameCount = 0, lastFpsTime = Date.now(), fps = 0;
+let history = [], sentence = [];
+let totalClear = 0, totalUnclear = 0;
+let lastAddedGesture = '';
+let lastAddedTime = 0;
+const COOLDOWN_MS = 1800;
 
-function getConfColor(c) {
+// ─────────────────────────────────────────────
+//  LANDMARK INDICES (MediaPipe)
+// ─────────────────────────────────────────────
+const TIP = { THUMB:4, INDEX:8, MIDDLE:12, RING:16, PINKY:20 };
+const MCP = { THUMB:2, INDEX:5, MIDDLE:9, RING:13, PINKY:17 };
+const PIP = { INDEX:6, MIDDLE:10, RING:14, PINKY:18 };
+
+// ─────────────────────────────────────────────
+//  FINGER STATE HELPERS
+// ─────────────────────────────────────────────
+function fingerUp(lm, tip, pip) {
+  return lm[tip].y < lm[pip].y;
+}
+function thumbUp(lm, hand) {
+  if (hand === 'Right') return lm[TIP.THUMB].x > lm[MCP.THUMB].x;
+  return lm[TIP.THUMB].x < lm[MCP.THUMB].x;
+}
+function thumbDown(lm, hand) {
+  if (hand === 'Right') return lm[TIP.THUMB].x < lm[MCP.THUMB].x - 0.04;
+  return lm[TIP.THUMB].x > lm[MCP.THUMB].x + 0.04;
+}
+function dist(a, b) {
+  return Math.sqrt((a.x-b.x)**2 + (a.y-b.y)**2);
+}
+function fingersUpArray(lm, hand) {
+  return [
+    thumbUp(lm, hand) ? 1 : 0,
+    fingerUp(lm, TIP.INDEX, PIP.INDEX) ? 1 : 0,
+    fingerUp(lm, TIP.MIDDLE, PIP.MIDDLE) ? 1 : 0,
+    fingerUp(lm, TIP.RING, PIP.RING) ? 1 : 0,
+    fingerUp(lm, TIP.PINKY, PIP.PINKY) ? 1 : 0,
+  ];
+}
+
+// ─────────────────────────────────────────────
+//  GESTURE CLASSIFIER
+// ─────────────────────────────────────────────
+function classifyGesture(lm, handedness) {
+  const hand = handedness;
+  const fu = fingersUpArray(lm, hand);
+  const [T, I, M, R, P] = fu;
+  const upCount = fu.reduce((a,b)=>a+b,0);
+
+  // — FIST (0 fingers up)
+  if (upCount === 0) return { name:'FIST ✊', conf: 0.93 };
+
+  // — OPEN HAND (all 5 up)
+  if (upCount === 5) return { name:'OPEN HAND 🖐', conf: 0.92 };
+
+  // — THUMBS UP (only thumb, pointing up relative to wrist)
+  if (T && !I && !M && !R && !P && lm[TIP.THUMB].y < lm[0].y - 0.1)
+    return { name:'THUMBS UP 👍', conf: 0.90 };
+
+  // — THUMBS DOWN
+  if (thumbDown(lm, hand) && !I && !M && !R && !P && lm[TIP.THUMB].y > lm[0].y + 0.05)
+    return { name:'THUMBS DOWN 👎', conf: 0.88 };
+
+  // — POINTING / ONE ☝️
+  if (!T && I && !M && !R && !P) return { name:'ONE ☝️', conf: 0.91 };
+
+  // — PEACE / TWO ✌️
+  if (!T && I && M && !R && !P) return { name:'PEACE ✌️', conf: 0.90 };
+
+  // — THREE
+  if (!T && I && M && R && !P) return { name:'THREE 🤙', conf: 0.88 };
+
+  // — FOUR
+  if (!T && I && M && R && P) return { name:'FOUR 4️⃣', conf: 0.89 };
+
+  // — OK 👌 (thumb+index pinch, others up)
+  if (dist(lm[TIP.THUMB], lm[TIP.INDEX]) < 0.06 && M && R && P)
+    return { name:'OK 👌', conf: 0.87 };
+
+  // — PINCH 🤏 (thumb+index close, others down)
+  if (dist(lm[TIP.THUMB], lm[TIP.INDEX]) < 0.06 && !M && !R && !P)
+    return { name:'PINCH 🤏', conf: 0.85 };
+
+  // — ILY / I LOVE YOU 🤟 (thumb + index + pinky)
+  if (T && I && !M && !R && P) return { name:'I LOVE YOU 🤟', conf: 0.91 };
+
+  // — ROCK ON / HORNS 🤘 (index + pinky, no middle/ring, no thumb)
+  if (!T && I && !M && !R && P) return { name:'ROCK ON 🤘', conf: 0.89 };
+
+  // — CALL ME 🤙 (thumb + pinky)
+  if (T && !I && !M && !R && P) return { name:'CALL ME 🤙', conf: 0.90 };
+
+  // — VULCAN 🖖 (index+middle + ring+pinky, gap between)
+  if (!T && I && M && R && P) {
+    const gap = Math.abs(lm[TIP.MIDDLE].x - lm[TIP.RING].x);
+    if (gap > 0.04) return { name:'VULCAN 🖖', conf: 0.85 };
+    return { name:'FOUR 4️⃣', conf: 0.87 };
+  }
+
+  // — CROSSED FINGERS 🤞 (index over middle, close)
+  if (!T && I && M && !R && !P) {
+    const cross = dist(lm[TIP.INDEX], lm[TIP.MIDDLE]);
+    if (cross < 0.04) return { name:'CROSSED 🤞', conf: 0.83 };
+    return { name:'PEACE ✌️', conf: 0.88 };
+  }
+
+  // — WAVE / HELLO 👋
+  if (upCount >= 4 && T) return { name:'HELLO 👋', conf: 0.86 };
+
+  // Fallback with low confidence
+  return { name: `GESTURE (${upCount})`, conf: 0.55 + Math.random()*0.15 };
+}
+
+// ─────────────────────────────────────────────
+//  COLOR HELPER
+// ─────────────────────────────────────────────
+function confColor(c) {
   if (c >= THRESHOLD) return 'var(--accent2)';
   if (c >= 0.5) return 'var(--warn)';
   return 'var(--danger)';
 }
 
-function animateHand(unclear) {
-  const svg = document.getElementById('hand-svg');
-  if (unclear) {
-    svg.style.animation = 'none';
-    svg.style.opacity = '0.4';
-    svg.style.filter = 'blur(1.5px)';
-    setTimeout(()=> { svg.style.opacity = ''; svg.style.filter = ''; }, 800);
-  } else {
-    const fingers = document.getElementById('fingers');
-    fingers.style.transition = 'all 0.3s';
-    svg.style.transform = 'scale(1.05)';
-    setTimeout(()=> { svg.style.transform = ''; }, 300);
-  }
-}
-
-function updateConfBar(conf) {
+// ─────────────────────────────────────────────
+//  UI UPDATE
+// ─────────────────────────────────────────────
+function updateConfBar(c) {
   const fill = document.getElementById('conf-fill');
-  const val = document.getElementById('conf-value');
-  const pct = Math.round(conf * 100);
-  fill.style.width = pct + '%';
-  fill.style.background = getConfColor(conf);
-  val.textContent = pct + '%';
-  val.style.color = getConfColor(conf);
+  const pct  = document.getElementById('conf-pct');
+  const p = Math.round(c*100);
+  fill.style.width = p + '%';
+  fill.style.background = confColor(c);
+  pct.textContent = p + '%';
+  pct.style.color = confColor(c);
 }
 
-function showResult(word, conf) {
-  const display = document.getElementById('word-display');
-  const content = document.getElementById('display-content');
-  const isClean = conf >= THRESHOLD;
-
-  display.className = 'word-display ' + (isClean ? 'clear-state' : 'unclear-state');
-
-  if (isClean) {
-    content.innerHTML = `<div class="interpreted-word">${word}</div>`;
+function showResult(name, conf) {
+  const wd = document.getElementById('word-display');
+  const dc = document.getElementById('disp-content');
+  const clean = conf >= THRESHOLD;
+  wd.className = 'word-display ' + (clean ? 'clear' : 'unclear');
+  if (clean) {
+    dc.innerHTML = `<div class="big-word">${name}</div>`;
   } else {
-    content.innerHTML = `
-      <div class="unclear-label">
-        <div class="unclear-icon">⚠</div>
-        <div class="unclear-text">Sign unclear — please<br>repeat the gesture.</div>
-        <div class="unclear-sub">Confidence below 75% threshold</div>
+    dc.innerHTML = `
+      <div class="unclear-block">
+        <div class="unclear-ico">⚠</div>
+        <div class="unclear-title">Sign unclear —<br>please repeat</div>
+        <div class="unclear-sub">Below 75% threshold</div>
       </div>`;
   }
 }
 
-function addHistory(word, conf) {
-  const isClean = conf >= THRESHOLD;
-  const pct = Math.round(conf * 100);
+function addToHistory(name, conf) {
+  const clean = conf >= THRESHOLD;
+  const pct = Math.round(conf*100);
+  history.push({name, conf, clean});
 
-  const item = document.createElement('div');
-  item.className = 'history-item';
-  item.innerHTML = `
-    <div style="display:flex;align-items:center;gap:10px">
-      <span class="history-word" style="color:${isClean ? 'var(--accent2)' : 'var(--muted)'}">${isClean ? word : '???'}</span>
-      <span style="font-size:0.7rem;color:var(--muted);font-family:'Space Mono',monospace">
-        attempt #${history.length+1}
-      </span>
-    </div>
-    <div class="history-meta">
-      <span class="history-conf" style="color:${getConfColor(conf)}">${pct}%</span>
-      <span class="history-badge ${isClean ? 'badge-clear' : 'badge-unclear'}">${isClean ? 'CLEAR' : 'UNCLEAR'}</span>
-    </div>`;
-
-  history.push({ word, conf, isClean });
-
-  const list = document.getElementById('history-list');
-  const empty = document.getElementById('empty-history');
+  const list = document.getElementById('hist-list');
+  const empty = document.getElementById('hist-empty');
   if (empty) empty.remove();
 
-  list.insertBefore(item, list.firstChild);
-  document.getElementById('history-count').textContent = history.length + ' attempt' + (history.length !== 1 ? 's' : '');
+  const el = document.createElement('div');
+  el.className = 'hi';
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;gap:9px">
+      <span class="hi-word" style="color:${clean?'var(--accent2)':'var(--muted)'}">${clean ? name : '???'}</span>
+    </div>
+    <div class="hi-meta">
+      <span class="hi-pct" style="color:${confColor(conf)}">${pct}%</span>
+      <span class="badge ${clean?'bc':'bu'}">${clean?'CLEAR':'UNCLEAR'}</span>
+    </div>`;
+  list.insertBefore(el, list.firstChild);
 
-  if (isClean) {
+  document.getElementById('hist-count').textContent = history.length + ' attempt' + (history.length!==1?'s':'');
+
+  if (clean) {
     totalClear++;
-    sentence.push(word);
+    sentence.push(name.replace(/[^\w\s]/gi,'').trim());
     updateSentence();
   } else {
     totalUnclear++;
   }
-
-  document.getElementById('stat-total').textContent = history.length;
-  document.getElementById('stat-clear').textContent = totalClear;
-  document.getElementById('stat-unclear').textContent = totalUnclear;
+  document.getElementById('s-total').textContent = history.length;
+  document.getElementById('s-clear').textContent = totalClear;
+  document.getElementById('s-unclear').textContent = totalUnclear;
 }
 
 function updateSentence() {
-  const display = document.getElementById('sentence-display');
-  display.innerHTML = '';
+  const box = document.getElementById('sentence-box');
+  box.innerHTML = '';
   sentence.forEach(w => {
-    const span = document.createElement('span');
-    span.className = 'sentence-word';
-    span.textContent = w;
-    display.appendChild(span);
+    if (w === ' ') {
+      const sp = document.createElement('span');
+      sp.style.cssText = 'display:inline-block;width:16px';
+      box.appendChild(sp);
+    } else {
+      const span = document.createElement('span');
+      span.className = 'sw';
+      span.textContent = w;
+      box.appendChild(span);
+    }
   });
-  const cursor = document.createElement('div');
-  cursor.className = 'cursor-blink';
-  display.appendChild(cursor);
+  const cur = document.createElement('div');
+  cur.className = 'cur';
+  box.appendChild(cur);
 }
 
-function simulateSign(forceClean) {
-  const word = SIGNS[Math.floor(Math.random() * SIGNS.length)];
-  let conf;
-  if (forceClean) {
-    conf = 0.75 + Math.random() * 0.24;
-  } else {
-    conf = 0.20 + Math.random() * 0.52;
-  }
-  conf = Math.min(0.99, conf);
-
-  animateHand(!forceClean);
-  updateConfBar(conf);
-  showResult(word, conf);
-  addHistory(word, conf);
-}
-
-function simulateRandom() {
-  const word = SIGNS[Math.floor(Math.random() * SIGNS.length)];
-  const conf = 0.30 + Math.random() * 0.68;
-  const isClean = conf >= THRESHOLD;
-
-  animateHand(!isClean);
-  updateConfBar(conf);
-  showResult(word, conf);
-  addHistory(word, conf);
-}
+function removeLastWord() { if (sentence.length) { sentence.pop(); updateSentence(); } }
+function addSpace() { sentence.push(' '); updateSentence(); }
+function clearSentence() { sentence = []; updateSentence(); }
 
 function clearAll() {
   history = []; sentence = [];
   totalClear = 0; totalUnclear = 0;
-
-  document.getElementById('stat-total').textContent = '0';
-  document.getElementById('stat-clear').textContent = '0';
-  document.getElementById('stat-unclear').textContent = '0';
-  document.getElementById('history-count').textContent = '0 attempts';
-
-  const list = document.getElementById('history-list');
-  list.innerHTML = '<div class="empty-history" id="empty-history">No recognition attempts yet</div>';
-
-  const display = document.getElementById('word-display');
-  display.className = 'word-display idle-state';
-  document.getElementById('display-content').innerHTML = 'Press <strong style="color:var(--accent)">Simulate</strong><br>to begin recognition';
-
-  const conf = document.getElementById('conf-fill');
-  conf.style.width = '0%';
-  document.getElementById('conf-value').textContent = '—';
-  document.getElementById('conf-value').style.color = 'var(--muted)';
-
+  document.getElementById('s-total').textContent = '0';
+  document.getElementById('s-clear').textContent = '0';
+  document.getElementById('s-unclear').textContent = '0';
+  document.getElementById('hist-count').textContent = '0 attempts';
+  document.getElementById('hist-list').innerHTML = '<div class="empty" id="hist-empty">No attempts yet</div>';
+  document.getElementById('conf-fill').style.width = '0';
+  document.getElementById('conf-pct').textContent = '—';
+  document.getElementById('conf-pct').style.color = 'var(--muted)';
+  const wd = document.getElementById('word-display');
+  wd.className = 'word-display';
+  document.getElementById('disp-content').innerHTML = 'Enable camera &amp; show<br>a hand gesture to begin';
   updateSentence();
 }
 
-// Subtle hand breathing animation
-let t = 0;
-(function animLoop() {
-  t += 0.02;
-  const svg = document.getElementById('hand-svg');
-  const dy = Math.sin(t) * 3;
-  const sc = 1 + Math.sin(t * 0.7) * 0.01;
-  svg.style.transform = `translateY(${dy}px) scale(${sc})`;
-  requestAnimationFrame(animLoop);
-})();
+// ─────────────────────────────────────────────
+//  MEDIAPIPE SETUP
+// ─────────────────────────────────────────────
+function onResults(results) {
+  const canvas = document.getElementById('output-canvas');
+  const ctx = canvas.getContext('2d');
+  const video = document.getElementById('input-video');
+
+  canvas.width  = video.videoWidth  || canvas.offsetWidth;
+  canvas.height = video.videoHeight || canvas.offsetHeight;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // FPS
+  frameCount++;
+  const now = Date.now();
+  if (now - lastFpsTime > 1000) {
+    fps = frameCount;
+    frameCount = 0;
+    lastFpsTime = now;
+    document.getElementById('fps-txt').textContent = fps + ' FPS';
+  }
+
+  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+    gestureHoldFrames = 0;
+    lastGesture = null;
+    // No hand — dim display slightly
+    return;
+  }
+
+  const lm       = results.multiHandLandmarks[0];
+  const handed   = results.multiHandedness?.[0]?.label || 'Right';
+
+  // Draw connections
+  drawConnectors(ctx, lm, HAND_CONNECTIONS, { color:'rgba(78,205,196,0.5)', lineWidth:2 });
+  // Draw landmarks
+  drawLandmarks(ctx, lm, { color:'rgba(124,110,247,0.9)', fillColor:'rgba(124,110,247,0.3)', lineWidth:1, radius:4 });
+
+  // Update landmark chips
+  const fmt = p => `${(p.x).toFixed(2)},${(p.y).toFixed(2)}`;
+  document.getElementById('lm-wrist').textContent   = fmt(lm[0]);
+  document.getElementById('lm-index').textContent   = fmt(lm[TIP.INDEX]);
+  document.getElementById('lm-middle').textContent  = fmt(lm[TIP.MIDDLE]);
+  document.getElementById('lm-ring').textContent    = fmt(lm[TIP.RING]);
+  document.getElementById('lm-pinky').textContent   = fmt(lm[TIP.PINKY]);
+  document.getElementById('lm-thumb').textContent   = fmt(lm[TIP.THUMB]);
+  const fu = fingersUpArray(lm, handed);
+  document.getElementById('lm-fingers').textContent = fu.reduce((a,b)=>a+b,0) + '/5';
+  document.getElementById('lm-hand').textContent    = handed;
+
+  // Classify
+  const result = classifyGesture(lm, handed);
+  document.getElementById('lm-id').textContent = result.name.split(' ')[0];
+
+  // Smooth: require HOLD_NEEDED consistent frames
+  if (result.name === lastGesture) {
+    gestureHoldFrames++;
+  } else {
+    gestureHoldFrames = 1;
+    lastGesture = result.name;
+  }
+
+  updateConfBar(result.conf);
+  showResult(result.name, result.conf);
+
+  // Only commit after hold + cooldown
+  if (gestureHoldFrames === HOLD_NEEDED) {
+    const t = Date.now();
+    if (result.name !== lastAddedGesture || t - lastAddedTime > COOLDOWN_MS) {
+      lastAddedGesture = result.name;
+      lastAddedTime = t;
+      addToHistory(result.name, result.conf);
+      showToast(result.conf >= THRESHOLD ? '✓ ' + result.name : '⚠ Sign unclear');
+    }
+  }
+
+  // Draw confidence label on canvas
+  ctx.save();
+  ctx.font = 'bold 14px monospace';
+  ctx.fillStyle = result.conf >= THRESHOLD ? '#4ecdc4' : '#f76e6e';
+  const pct = Math.round(result.conf * 100);
+  ctx.fillText(result.name + '  ' + pct + '%', 10, canvas.height - 12);
+  ctx.restore();
+}
+
+// ─────────────────────────────────────────────
+//  START CAMERA
+// ─────────────────────────────────────────────
+async function startCamera() {
+  const btn = document.getElementById('start-btn');
+  btn.textContent = '⏳ Initialising…';
+  btn.disabled = true;
+
+  try {
+    const video = document.getElementById('input-video');
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video:{ width:1280, height:720, facingMode:'user' }, audio:false });
+    video.srcObject = cameraStream;
+    await video.play();
+
+    video.style.display = 'block';
+    document.getElementById('no-cam-msg').style.display = 'none';
+    document.getElementById('cam-status').textContent = 'LIVE';
+    btn.style.display = 'none';
+
+    handsModel.send({ image: video });
+    const camera = new Camera(video, {
+      onFrame: async () => { await handsModel.send({ image: video }); },
+      width: 1280, height: 720
+    });
+    camera.start();
+    showToast('Camera started — show a gesture!');
+  } catch(e) {
+    btn.textContent = '⚠ Camera denied — retry';
+    btn.disabled = false;
+    showToast('Camera access denied');
+    console.error(e);
+  }
+}
+
+// ─────────────────────────────────────────────
+//  TOAST
+// ─────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 2000);
+}
+
+// ─────────────────────────────────────────────
+//  INIT MEDIAPIPE
+// ─────────────────────────────────────────────
+async function initModel() {
+  const msg = document.getElementById('load-msg');
+  msg.textContent = 'Loading MediaPipe Hands…';
+
+  handsModel = new Hands({
+    locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+  });
+
+  handsModel.setOptions({
+    maxNumHands: 1,
+    modelComplexity: 1,
+    minDetectionConfidence: 0.65,
+    minTrackingConfidence: 0.65
+  });
+
+  handsModel.onResults(onResults);
+
+  msg.textContent = 'Warming up model…';
+  await handsModel.initialize();
+
+  msg.textContent = 'Ready!';
+  await new Promise(r => setTimeout(r, 600));
+
+  const ls = document.getElementById('loading-screen');
+  ls.style.opacity = '0';
+  setTimeout(()=> {
+    ls.style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    updateSentence();
+  }, 600);
+}
+
+// Start
+window.addEventListener('load', initModel);
 </script>
+</body>
+</html>
